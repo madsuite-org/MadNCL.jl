@@ -73,7 +73,7 @@ function ScaledModel(
         lvar=NLPModels.get_lvar(nlp),
         uvar=NLPModels.get_uvar(nlp),
         x0=x0,
-        y0 = NLPModels.get_y0(nlp) .* scaling_cons,
+        y0=NLPModels.get_y0(nlp) .* scaling_obj ./ scaling_cons,
         nnzj=NLPModels.get_nnzj(nlp),
         nnzh=NLPModels.get_nnzh(nlp),
         ncon=m,

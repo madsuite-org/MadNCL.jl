@@ -15,10 +15,10 @@ subject to   c♭ ≤ c(x) ≤ c♯
              x ≥ 0
 
 ```
-using a augmented-Lagrangian formulation. For a given scalar ``ρ``
+using an augmented-Lagrangian formulation. For a given scalar ``ρ``
 and multiplier ``y_e``, the NCL model writes
 ```
-min_{x,r}    f(x) - y_eᵀ r + \frac{1}{2} \| r \|^2
+min_{x,r}    f(x) - y_eᵀ r + \frac{ρ}{2} \| r \|^2
 subject to   c♭ ≤ c(x) + r ≤ c♯
              x ≥ 0
 
@@ -171,7 +171,7 @@ function NLPModels.hess_coord!(
     x = view(xr, 1:ncl.nx)
     hessx = view(hess, 1:nnzhx)
     NLPModels.hess_coord!(ncl.nlp, x, y, hessx; obj_weight=sense * obj_weight)
-    hess[nnzhx+1:nnzhxr] .= ncl.ρk[]
+    hess[nnzhx+1:nnzhxr] .= obj_weight * ncl.ρk[]
     return hess
 end
 
