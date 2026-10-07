@@ -78,7 +78,6 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
     n = NLPModels.get_nvar(ncl.nlp)
     m = solver.m
     is_min = NLPModels.get_minimize(ncl.nlp)
-    ρk = ncl.ρk[]
     x = similar(VT, n + m)
     zl = similar(VT, n + m)
     zu = similar(VT, n + m)
@@ -88,7 +87,9 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
 
     y = copy(solver.ipm.y)
     r = x[n+1:n+m]
-    obj_val = solver.ipm.obj_val + dot(y, r) - 0.5 * ρk * dot(r, r)
+    # Evaluate the objective directly, as yk and ρk may have changed
+    # since the last evaluation of ipm.obj_val.
+    obj_val = NLPModels.obj(ncl.nlp, x[1:n])
     MadNLP.update_z!(ipm.cb, x, y, zl, zu, ipm.jacl)
     # Scale back problem data
     if isa(ncl.nlp, ScaledModel)
@@ -102,7 +103,7 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
         status,
         x[1:n],
         r,
-        is_min ? obj_val : -obj_val,
+        obj_val,
         solver.ipm.inf_du,
         norm(r, Inf),
         is_min ? y : .-y,
@@ -409,6 +410,10 @@ function solve!(solver::NCLSolver{T}) where T
             ipm.x_lr, ipm.xl_r, ipm.zl_r, ipm.xu_r, ipm.x_ur, ipm.zu_r, ipm.mu, 1.0,
         )
 
+        # Objective without the augmented Lagrangian terms.
+        # N.B.: must be computed before yk and ρk are updated.
+        obj_val = ipm.obj_val + dot(ncl.yk, r) - ncl.ρk[] * dot(r, r) / T(2)
+
         # Update parameters
         if is_extrapolated
             ncl.yk .= ipm.y
@@ -427,7 +432,6 @@ function solve!(solver::NCLSolver{T}) where T
 
         # Log evolution
         ipm_iter = ipm.cnt.k
-        obj_val = ipm.obj_val + dot(ncl.yk, r) - 0.5 * ncl.ρk[] * dot(r, r)
         options.verbose && _log_iter(iter, flag, ipm_iter, obj_val, pr_feas, du_feas, η, μ, ncl.ρk[])
 
         # Check convergence
@@ -446,7 +450,8 @@ function solve!(solver::NCLSolver{T}) where T
         iter += 1
     end
 
-    if (iter >= options.max_auglag_iter) || (ipm.status == MadNLP.MAXIMUM_ITERATIONS_EXCEEDED)
+    # Loop exhausted without convergence
+    if ncl_status == MadNLP.INITIAL
         ncl_status = MadNLP.MAXIMUM_ITERATIONS_EXCEEDED
     end
 

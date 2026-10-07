@@ -13,17 +13,17 @@ The original augmented KKT system for augmented Lagrangian is:
 [   0        0      Σₛ   -I ] [Δs]     [ d3]
 [   J        I      -I    0 ] [Δy]     [ d4]
 ```
-By removing the block associated to ``(Δr, Δs, Δy)``and setting ``Π := (ρI + Σᵣ)``,
+By removing the block associated to ``(Δr, Δs, Δy)`` and setting ``Π := (ρI + Σᵣ)``,
 we obtain the K1s formulation:
 ```
-K Δx = d1 + Jᵀ Π (d4 + (Σₛ + Π)⁻¹ (d3 - Π d4))
+K Δx = d1 + Jᵀ (Π d4 - d2) + Jᵀ Π (Σₛ + Π)⁻¹ (d3 + d2 - Π d4)
 ```
 with the condensed matrix ``K = H + Σₓ + Jᵀ Ω J`` depending
 on the diagonal matrix ``Ω = Π Σₛ (Σₛ + Π)⁻¹``. We recover the remaining
 descent direction as
 ```
-Δs = (Σₛ + Π)⁻¹ (d2 - Π d4 + Π J Δx)
-Δy = Π (J Δx - Δs - d4)
+Δs = (Σₛ + Π)⁻¹ (d3 + d2 - Π d4 + Π J Δx)
+Δy = Π (J Δx - Δs - d4) + d2
 Δr = Π⁻¹ (d2 - Δy)
 
 ```
