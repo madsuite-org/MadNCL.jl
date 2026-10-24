@@ -29,7 +29,7 @@ descent direction as
 ```
 
 """
-struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT} <: MadNLP.AbstractKKTSystem{T, VT, MT, MadNLP.ExactHessian{T, VT}}
+struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT, VTu1, VTu2} <: MadNLP.AbstractKKTSystem{T, VT, MT, MadNLP.ExactHessian{T, VT}}
     hess_callback::VT
     jac_callback::VT
     reg::VT
@@ -47,9 +47,9 @@ struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT} <: MadNLP.AbstractKKTSys
     θk::VT
     # slack diagonal buffer
     diag_buffer::VT
-    dptr::AbstractVector
-    hptr::AbstractVector
-    jptr::AbstractVector
+    dptr::VTu1
+    hptr::VTu1
+    jptr::VTu2
     # Condensed system
     aug_com::MT
     # Hessian
@@ -271,7 +271,7 @@ function MadNLP.build_kkt!(kkt::K1sAuglagKKTSystem)
     MadNLP.build_condensed_aug_coord!(kkt)
 end
 
-function MadNLP.solve_kkt!(kkt::K1sAuglagKKTSystem, w::MadNLP.AbstractKKTVector)
+function MadNLP.solve_kkt!(kkt::K1sAuglagKKTSystem{T}, w::MadNLP.AbstractKKTVector) where T
     MadNLP.reduce_rhs!(w.xp_lr, MadNLP.dual_lb(w), kkt.l_diag, w.xp_ur, MadNLP.dual_ub(w), kkt.u_diag)
 
     nx, nr, ns = kkt.nx, kkt.nr, length(kkt.ind_ineq)
@@ -297,9 +297,9 @@ function MadNLP.solve_kkt!(kkt::K1sAuglagKKTSystem, w::MadNLP.AbstractKKTVector)
     dx .= dx .+ wx
     ds .= ws .- dy[kkt.ind_ineq]
     # Remove Δs
-    dy .= 0
+    fill!(dy, zero(T))
     dy[kkt.ind_ineq] .= (kkt.θk[kkt.ind_ineq] .* ds) ./ (Σs .+ kkt.θk[kkt.ind_ineq])
-    mul!(dx, kkt.jt_csc, dy, 1.0, 1.0)
+    mul!(dx, kkt.jt_csc, dy, one(T), one(T))
 
     MadNLP.solve_linear_system!(kkt.linear_solver, dx)
 

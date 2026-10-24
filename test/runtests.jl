@@ -165,6 +165,27 @@ end
     end
 end
 
+@testset "Precision $(T) ($(kkt))" for T in (Float32, Float64), kkt in [
+    MadNCL.K2rAuglagKKTSystem,
+    MadNCL.K1sAuglagKKTSystem,
+]
+    nlp = MadNLPTests.HS15Model(; T=T, x0=T[1, 1])
+    tol = T == Float32 ? T(1e-3) : T(1e-6)
+    solver = MadNCL.NCLSolver(
+        nlp;
+        ncl_options=MadNCL.NCLOptions{T}(verbose=false, opt_tol=tol, feas_tol=tol),
+        print_level=MadNLP.ERROR,
+        kkt_system=kkt,
+        linear_solver=LDLSolver,
+    )
+    stats = @inferred MadNCL.solve!(solver)
+    @test stats.status == MadNLP.SOLVE_SUCCEEDED
+    @test stats.objective isa T
+    @test eltype(stats.solution) == T
+    @test eltype(stats.multipliers) == T
+    @test stats.solution ≈ T[0.5, 2] rtol=sqrt(tol)
+end
+
 @testset "Fixed variables ($(kkt))" for kkt in [
     MadNCL.K2rAuglagKKTSystem,
     MadNCL.K1sAuglagKKTSystem,

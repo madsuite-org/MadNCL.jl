@@ -27,9 +27,9 @@ end
     NCLSolver
 =#
 
-struct NCLSolver{T, VT, M}
+struct NCLSolver{T, VT, M, S <: MadNLP.MadNLPSolver{T, VT}}
     ncl::NCLModel{T, VT, M}
-    ipm::MadNLP.MadNLPSolver{T, VT}
+    ipm::S
     options::NCLOptions{T}
     n::Int
     m::Int
@@ -50,7 +50,7 @@ function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOption
     # Remove regularization variables to work in the original space
     n = MadNLP.n_variables(solver.cb) - m
     @assert solver.m == m
-    return NCLSolver{T, VT, typeof(ncl.nlp)}(ncl, solver, ncl_options, n, m)
+    return NCLSolver{T, VT, typeof(ncl.nlp), typeof(solver)}(ncl, solver, ncl_options, n, m)
 end
 
 #=
@@ -165,18 +165,23 @@ function get_constr_viol_tol(ncl::NCLModel{T, VT, M}, r::AbstractVector) where {
         # Compute norm-Inf with mapreduce
         return mapreduce((x, c) -> abs(x) / c, max, r, con_scale)
     else
-        return 0.0
+        return zero(T)
     end
 end
 
-function setup!(solver::MadNLP.MadNLPSolver{T}; μ=1e-1, tol=1e-8) where T
-    barrier = solver.opt.barrier
-    # Update options
+# Function barrier: `solver.opt.barrier` is not concretely typed.
+function _fix_barrier_parameter!(barrier::MadNLP.AbstractBarrierUpdate{T}, μ::T) where T
     barrier.mu_init = μ
-    solver.opt.tol = tol
-    solver.mu = barrier.mu_init
     # Ensure the barrier parameter is fixed
-    barrier.mu_min = barrier.mu_init
+    barrier.mu_min = μ
+    return
+end
+
+function setup!(solver::MadNLP.MadNLPSolver{T}; μ=T(1e-1), tol=T(1e-8)) where T
+    # Update options
+    _fix_barrier_parameter!(solver.opt.barrier, μ)
+    solver.opt.tol = tol
+    solver.mu = μ
 
     # Refresh values
     solver.obj_val = MadNLP.eval_f_wrapper(solver, solver.x)
@@ -187,9 +192,9 @@ function setup!(solver::MadNLP.MadNLPSolver{T}; μ=1e-1, tol=1e-8) where T
     theta = MadNLP.get_theta(solver.c)
     solver.theta_max = T(1e4) * max(1,theta)
     solver.theta_min = T(1e-4) * max(1,theta)
-    solver.tau = max(solver.opt.tau_min,one(T)-barrier.mu_init)
+    solver.tau = max(solver.opt.tau_min, one(T) - μ)
     empty!(solver.filter)
-    push!(solver.filter, (solver.theta_max,-Inf))
+    push!(solver.filter, (solver.theta_max, T(-Inf)))
 
     return MadNLP.REGULAR
 end
@@ -404,10 +409,10 @@ function solve!(solver::NCLSolver{T}) where T
         # Get KKT residuals for scaled problem
         pr_feas = norm(r, Inf)
         du_feas = MadNLP.get_inf_du(
-            MadNLP.full(ipm.f), MadNLP.full(ipm.zl), MadNLP.full(ipm.zu), ipm.jacl, 1.0,
+            MadNLP.full(ipm.f), MadNLP.full(ipm.zl), MadNLP.full(ipm.zu), ipm.jacl, one(T),
         )
         cc_feas = MadNLP.get_inf_compl(
-            ipm.x_lr, ipm.xl_r, ipm.zl_r, ipm.xu_r, ipm.x_ur, ipm.zu_r, ipm.mu, 1.0,
+            ipm.x_lr, ipm.xl_r, ipm.zl_r, ipm.xu_r, ipm.x_ur, ipm.zu_r, ipm.mu, one(T),
         )
 
         # Objective without the augmented Lagrangian terms.

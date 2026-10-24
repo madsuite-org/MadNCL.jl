@@ -109,7 +109,7 @@ function MadNLP.create_kkt_system(
     I = MadNLP.create_array(cb, Int32, nnz_aug_kkt)
     J = MadNLP.create_array(cb, Int32, nnz_aug_kkt)
     V = VT(undef, nnz_aug_kkt)
-    fill!(V, 0.0)  # Need to initiate V to avoid NaN
+    fill!(V, zero(T))  # Need to initiate V to avoid NaN
 
     offset = n_tot+nnz_jac+n_slack+nnz_hess+m
 
@@ -221,11 +221,11 @@ function MadNLP.initialize!(kkt::K2rAuglagKKTSystem{T}) where T
     fill!(nonzeros(kkt.hess_com), zero(T)) # so that mul! in the initial primal-dual solve has no effect
 end
 
-function MadNLP.compress_jacobian!(kkt::K2rAuglagKKTSystem)
+function MadNLP.compress_jacobian!(kkt::K2rAuglagKKTSystem{T}) where T
     ns = length(kkt.ind_ineq)
     # Update values in COO matrix
     kkt.jac_raw.V[1:kkt.nnz_jac] .= @view kkt.jac_callback[1:kkt.nnz_jac]
-    kkt.jac_raw.V[end-ns+1:end] .= -1.0
+    kkt.jac_raw.V[end-ns+1:end] .= -one(T)
     # Transfer to CSC
     MadNLP.transfer!(kkt.jac_com, kkt.jac_raw, kkt.jac_csc_map)
 end
@@ -250,12 +250,12 @@ function MadNLP.jtprod!(y::AbstractVector, kkt::K2rAuglagKKTSystem, x::AbstractV
     return y
 end
 
-function MadNLP.build_kkt!(kkt::K2rAuglagKKTSystem)
+function MadNLP.build_kkt!(kkt::K2rAuglagKKTSystem{T}) where T
     nx, nr, ns = kkt.nx, kkt.nr, length(kkt.ind_ineq)
     Σx = @view kkt.pr_diag[1:nx]
     Σr = @view kkt.pr_diag[nx+1:nx+nr]
     Σs = @view kkt.pr_diag[nx+nr+1:nx+nr+ns]
-    kkt.θk .= 1.0 ./ (kkt.ρk .+ Σr)
+    kkt.θk .= one(T) ./ (kkt.ρk .+ Σr)
     kkt.du_diag_reduced .= .-kkt.θk
     kkt.pr_diag_reduced[1:nx] .= Σx
     kkt.pr_diag_reduced[nx+1:nx+ns] .= Σs
