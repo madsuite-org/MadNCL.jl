@@ -196,8 +196,8 @@ end
     @test results.objective ≈ 3.0 rtol=1e-6
     @test results.solution ≈ [0.0, 0.0, 1.0] rtol=1e-6
     @test results.multipliers[1] ≈ -3.0 rtol=1e-6
-    @test results.multipliers_L[1] ≈ 2.0 rtol=1e-6
-    @test results.multipliers_L[2] ≈ 1.0 rtol=1e-6
+    @test results.multipliers_L[1] ≈ -2.0 rtol=1e-6
+    @test results.multipliers_L[2] ≈ -1.0 rtol=1e-6
     @test results.multipliers_L[3] ≈ 0.0 atol=1e-6
 end
 

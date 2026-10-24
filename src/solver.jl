@@ -106,9 +106,10 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
         obj_val,
         solver.ipm.inf_du,
         norm(r, Inf),
+        # The multipliers satisfy ∇f + ∇cᵀ y - zl + zu = 0 for the original problem.
         is_min ? y : .-y,
-        zl[1:n],
-        zu[1:n],
+        is_min ? zl[1:n] : .-zl[1:n],
+        is_min ? zu[1:n] : .-zu[1:n],
         solver.ipm.cnt.k,
         solver.ipm.cnt,
     )
