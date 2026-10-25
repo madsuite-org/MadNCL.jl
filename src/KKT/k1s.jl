@@ -29,7 +29,7 @@ descent direction as
 ```
 
 """
-struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT, VTu1, VTu2} <: MadNLP.AbstractKKTSystem{T, VT, MT, MadNLP.ExactHessian{T, VT}}
+struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT, VD1, VD2} <: MadNLP.AbstractKKTSystem{T, VT, MT, MadNLP.ExactHessian{T, VT}}
     hess_callback::VT
     jac_callback::VT
     reg::VT
@@ -47,9 +47,9 @@ struct K1sAuglagKKTSystem{T, VT, MT, VI, VI32, LS, EXT, VTu1, VTu2} <: MadNLP.Ab
     θk::VT
     # slack diagonal buffer
     diag_buffer::VT
-    dptr::VTu1
-    hptr::VTu1
-    jptr::VTu2
+    dptr::VD1
+    hptr::VD1
+    jptr::VD2
     # Condensed system
     aug_com::MT
     # Hessian
