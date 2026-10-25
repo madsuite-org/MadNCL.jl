@@ -22,6 +22,7 @@ include("Models/scaled.jl")
 
 include("KKT/k1s.jl")
 include("KKT/k2r.jl")
+include("KKT/scaled_k2r.jl")
 
 include("solver.jl")
 
