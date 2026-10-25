@@ -1,7 +1,7 @@
 name = "MadNCL"
 uuid = "434a0bcb-5a7c-42b2-a9d3-9e3f760e7af0"
 authors = ["fpacaud <francoispacaud8@gmail.com>", "amontoison <amontoison@anl.gov>"]
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
