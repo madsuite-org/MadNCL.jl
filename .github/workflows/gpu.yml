@@ -33,6 +33,9 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          Pkg.develop(path=".")
+          # a temporary project: the runner's depot persists between runs, and developing
+          # into its default environment re-resolves a manifest built by earlier runs
+          Pkg.activate(temp = true)
+          Pkg.develop(path = ".")
           Pkg.test("MadNCL")
 
