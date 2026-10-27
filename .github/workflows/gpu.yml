@@ -28,15 +28,18 @@ jobs:
       - uses: julia-actions/install-juliaup@v2
         with:
           channel: ${{ matrix.julia-version }}
+      - name: Remove broken package directories from the persistent depot
+        # the depot persists between runs; an interrupted install leaves a package directory
+        # without a Project.toml, which Pkg then treats as installed and resolves against
+        run: |
+          for d in "$JULIA_DEPOT_PATH"/packages/*/*/; do
+            [ -f "$d/Project.toml" ] || { echo "removing $d"; rm -rf "$d"; }
+          done
       - uses: julia-actions/julia-buildpkg@latest
       - name: Test MadNCL.jl
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          # the runner's depot persists between runs: a fresh copy of the General registry,
-          # and a temporary project, so nothing resolved by an earlier run is read back
-          try Pkg.Registry.rm("General") catch end
-          Pkg.Registry.add("General")
           Pkg.activate(temp = true)
           Pkg.develop(path = ".")
           Pkg.test("MadNCL")
