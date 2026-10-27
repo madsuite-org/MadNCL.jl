@@ -1,7 +1,7 @@
 name = "MadNCL"
 uuid = "434a0bcb-5a7c-42b2-a9d3-9e3f760e7af0"
 authors = ["fpacaud <francoispacaud8@gmail.com>", "amontoison <amontoison@anl.gov>"]
-version = "0.2.4"
+version = "0.3.0"
 
 [deps]
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
@@ -25,10 +25,10 @@ Atomix = "1.1.2"
 CUDA = "6"
 FiniteDiff = "2.27.0"
 JuMP = "1.30"
-KernelAbstractions = "0.9"
+KernelAbstractions = "0.10"
 LinearAlgebra = "1.10"
-MadNLP = "0.10"
-MadNLPGPU = "0.10"
+MadNLP = "0.11"
+MadNLPGPU = "0.11"
 MadNLPTests = "0.6.2"
 NLPModels = "0.21.9"
 NLPModelsJuMP = "0.13"
