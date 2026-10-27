@@ -33,8 +33,10 @@ jobs:
         shell: julia --color=yes {0}
         run: |
           using Pkg
-          # a temporary project: the runner's depot persists between runs, and developing
-          # into its default environment re-resolves a manifest built by earlier runs
+          # the runner's depot persists between runs: a fresh copy of the General registry,
+          # and a temporary project, so nothing resolved by an earlier run is read back
+          try Pkg.Registry.rm("General") catch end
+          Pkg.Registry.add("General")
           Pkg.activate(temp = true)
           Pkg.develop(path = ".")
           Pkg.test("MadNCL")
