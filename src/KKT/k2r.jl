@@ -179,6 +179,8 @@ function MadNLP.create_kkt_system(
     jac_com, jac_csc_map = MadNLP.coo_to_csc(jac_raw)
     hess_com, hess_csc_map = MadNLP.coo_to_csc(hess_raw)
 
+    # Saddle point: (x, s) block of size n_tot, then the m dual rows.
+    MadNLP.set_block_structure!(opt_linear_solver, n_tot, m)
     _linear_solver = linear_solver(
         aug_com; opt = opt_linear_solver
     )
@@ -208,6 +210,8 @@ MadNLP.get_hessian(kkt::K2rAuglagKKTSystem) = kkt.hess_callback
 function MadNLP.is_inertia_correct(kkt::K2rAuglagKKTSystem, num_pos, num_zero, num_neg)
     return (num_zero == 0) && (num_pos == kkt.n)
 end
+
+MadNLP.block_structure(kkt::K2rAuglagKKTSystem) = (kkt.n, kkt.m)
 
 function MadNLP.initialize!(kkt::K2rAuglagKKTSystem{T}) where T
     fill!(kkt.reg, one(T))

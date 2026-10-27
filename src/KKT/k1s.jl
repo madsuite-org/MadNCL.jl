@@ -171,6 +171,8 @@ function MadNLP.create_kkt_system(
             jt_csc
     )
 
+    # The condensed matrix is definite: no dual block.
+    MadNLP.set_block_structure!(opt_linear_solver, size(aug_com, 1), 0)
     _linear_solver = linear_solver(
         aug_com; opt = opt_linear_solver
     )
@@ -202,6 +204,8 @@ MadNLP.get_hessian(kkt::K1sAuglagKKTSystem) = kkt.hess_callback
 function MadNLP.is_inertia_correct(kkt::K1sAuglagKKTSystem, num_pos, num_zero, num_neg)
     return (num_zero == 0) && (num_pos == size(kkt.aug_com, 1))
 end
+
+MadNLP.block_structure(kkt::K1sAuglagKKTSystem) = (size(kkt.aug_com, 1), 0)
 
 function MadNLP.initialize!(kkt::K1sAuglagKKTSystem{T}) where T
     fill!(kkt.reg, one(T))
