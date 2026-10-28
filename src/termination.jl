@@ -17,7 +17,8 @@ The original problem is read in MadNLP's form: equality rows `c_i(x) = l_i`, ine
 with a slack `s_i = c_i(x)` bounded in `[l_i, u_i]`, bound multipliers of the slack derived
 from the row multiplier (`y = zu_s - zl_s`), and every bound relaxed by
 `bound_relax_factor * max(1, |bound|)` as MadNLP relaxes them (the slack bounds in the scaled
-units it works in). Fixed variables are left out, as MadNLP removes them. Every operation is
+units it works in); the scaling factors are taken at the initial point pushed inside the
+relaxed bounds (`bound_push`, `bound_fac`), where MadNLP takes them. Fixed variables are left out, as MadNLP removes them. Every operation is
 a broadcast or a reduction, so the test runs on the GPU.
 """
 struct MadNLPTermination{T, VT}
@@ -38,9 +39,16 @@ struct MadNLPTermination{T, VT}
 end
 
 function MadNLPTermination(nlp::NLPModels.AbstractNLPModel{T, VT}; tol, s_max = T(100), max_gradient = T(100),
-                           bound_relax = T(1e-8)) where {T, VT}
+                           bound_relax = T(1e-8), bound_push = T(1e-2), bound_fac = T(1e-2)) where {T, VT}
     n, m = NLPModels.get_nvar(nlp), NLPModels.get_ncon(nlp)
-    x0 = NLPModels.get_x0(nlp)
+    lvar0, uvar0 = NLPModels.get_lvar(nlp), NLPModels.get_uvar(nlp)
+    relax_lo(b) = b .- max.(one(T), abs.(b)) .* bound_relax
+    relax_up(b) = b .+ max.(one(T), abs.(b)) .* bound_relax
+    lvar, uvar = relax_lo(lvar0), relax_up(uvar0)
+    # the scaling factors are taken where MadNLP takes them: at the initial point pushed
+    # inside the relaxed bounds
+    x0 = copy(NLPModels.get_x0(nlp))
+    MadNLP.initialize_variables!(x0, lvar, uvar, bound_push, bound_fac)
     g = NLPModels.grad(nlp, x0)
     obj_scale = min(one(T), max_gradient / max(norm(g, Inf), eps(T)))
     con_scale = fill!(similar(x0, m), one(T))
@@ -52,11 +60,7 @@ function MadNLPTermination(nlp::NLPModels.AbstractNLPModel{T, VT}; tol, s_max = 
         NLPModels.jac_coord!(nlp, x0, jac)
         MadNLP.set_con_scale_sparse!(con_scale, Ji, jac, max_gradient)
     end
-    lvar0, uvar0 = NLPModels.get_lvar(nlp), NLPModels.get_uvar(nlp)
     free_var = T.(lvar0 .< uvar0)
-    relax_lo(b) = b .- max.(one(T), abs.(b)) .* bound_relax
-    relax_up(b) = b .+ max.(one(T), abs.(b)) .* bound_relax
-    lvar, uvar = relax_lo(lvar0), relax_up(uvar0)
     # the slack bounds are relaxed in MadNLP's scaled units and kept there
     lcon = relax_lo(con_scale .* NLPModels.get_lcon(nlp)) ./ con_scale
     ucon = relax_up(con_scale .* NLPModels.get_ucon(nlp)) ./ con_scale
@@ -72,7 +76,9 @@ end
 # ∇f + Jᵀy - zl + zu = 0 for the objective MadNLP minimizes (f, or -f for a maximization)
 function original_iterate!(term::MadNLPTermination{T, VT}, solver::NCLSolver{T, VT}) where {T, VT}
     ipm, ncl = solver.ipm, solver.ncl
-    n, m = solver.n, solver.m
+    # the unpacked vectors hold every variable of the model, fixed ones included, then the
+    # m relaxation variables; solver.n counts only the variables MadNLP kept
+    n, m = NLPModels.get_nvar(ncl.nlp), solver.m
     xr = similar(VT, n + m); zl = similar(VT, n + m); zu = similar(VT, n + m)
     MadNLP.unpack_x!(xr, ipm.cb, MadNLP.variable(ipm.x))
     MadNLP.unpack_z!(zl, ipm.cb, MadNLP.variable(ipm.zl))
