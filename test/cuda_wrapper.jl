@@ -92,5 +92,24 @@ end
         )
         @test res.status == MadNLP.SOLVE_SUCCEEDED
     end
+
+    # Termination on MadNLP's criterion, evaluated on the device
+    tol = 1e-8
+    opts = MadNCL.NCLOptions{Float64}(; verbose = false, termination = :madnlp, tol = tol)
+    res = MadNCL.madncl(
+        nlp_gpu;
+        ncl_options=opts,
+        tol=tol,
+        print_level=MadNLP.ERROR,
+        kkt_system=MadNCL.K2rAuglagKKTSystem,
+        linear_solver=MadNLPGPU.CUDSSSolver,
+        cudss_algorithm=MadNLP.LDL,
+    )
+    @test res.status == MadNLP.SOLVE_SUCCEEDED
+    term = MadNCL.MadNLPTermination(nlp_gpu; tol = tol)
+    pr, du, cc = MadNCL.madnlp_residuals(term, nlp_gpu, res.solution, res.multipliers, res.multipliers_L, res.multipliers_U)
+    @test max(pr, du, cc) <= tol
+    ref = MadNLP.madnlp(nlp_cpu; tol = tol, print_level = MadNLP.ERROR)
+    @test isapprox(res.objective, ref.objective; rtol = 1e-6)
 end
 

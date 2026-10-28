@@ -24,6 +24,7 @@ include("KKT/k1s.jl")
 include("KKT/k2r.jl")
 
 include("solver.jl")
+include("termination.jl")
 
 MadNLP.madsuite(::Val{:madncl}, args...; kwargs...) = madncl(args...; kwargs...)
 

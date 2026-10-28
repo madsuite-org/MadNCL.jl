@@ -21,6 +21,10 @@ import MadNLP: full, primal, dual, dual_lb, dual_ub
     mu_tau::T = T(1.99)
     mu_fac::T = T(0.2)
     mu_min::T = T(1e-9)
+    # :ncl stops on the tests below; :madnlp stops when the iterate satisfies MadNLP's own
+    # termination test for the original problem at `tol` (see MadNLPTermination)
+    termination::Symbol = :ncl
+    tol::T = T(1e-8)
 end
 
 #=
@@ -33,6 +37,7 @@ struct NCLSolver{T, VT, M, S <: MadNLP.MadNLPSolver{T, VT}}
     options::NCLOptions{T}
     n::Int
     m::Int
+    termination::Any   # a MadNLPTermination when options.termination == :madnlp, else nothing
 end
 
 function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOptions{T}(), ipm_options...) where {T, VT}
@@ -50,7 +55,12 @@ function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOption
     # Remove regularization variables to work in the original space
     n = MadNLP.n_variables(solver.cb) - m
     @assert solver.m == m
-    return NCLSolver{T, VT, typeof(ncl.nlp), typeof(solver)}(ncl, solver, ncl_options, n, m)
+    ncl_options.termination in (:ncl, :madnlp) ||
+        throw(ArgumentError("termination must be :ncl or :madnlp, got $(ncl_options.termination)"))
+    term = ncl_options.termination == :madnlp ? MadNLPTermination(nlp; tol = ncl_options.tol, s_max = T(solver.opt.s_max),
+                                                                   max_gradient = T(solver.opt.nlp_scaling_max_gradient),
+                                                                   bound_relax = T(solver.opt.bound_relax_factor)) : nothing
+    return NCLSolver{T, VT, typeof(ncl.nlp), typeof(solver)}(ncl, solver, ncl_options, n, m, term)
 end
 
 #=
@@ -441,11 +451,11 @@ function solve!(solver::NCLSolver{T}) where T
         options.verbose && _log_iter(iter, flag, ipm_iter, obj_val, pr_feas, du_feas, η, μ, ncl.ρk[])
 
         # Check convergence
-        if (
-            max(du_feas, cc_feas) <= options.opt_tol &&
-            pr_feas <= options.feas_tol &&
-            get_constr_viol_tol(solver.ncl, r) <= options.constr_viol_tol
-        )
+        converged = options.termination == :madnlp ? madnlp_converged!(solver.termination, solver) :
+            (max(du_feas, cc_feas) <= options.opt_tol &&
+             pr_feas <= options.feas_tol &&
+             get_constr_viol_tol(solver.ncl, r) <= options.constr_viol_tol)
+        if converged
             ncl_status = MadNLP.SOLVE_SUCCEEDED
             break
         # Check infeasibility

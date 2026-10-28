@@ -226,3 +226,4 @@ if CUDA.has_cuda()
     include("cuda_wrapper.jl")
 end
 
+include("termination.jl")
