@@ -43,16 +43,20 @@ end
 function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOptions{T}(), ipm_options...) where {T, VT}
     ncl_options.termination in (:ncl, :madnlp) ||
         throw(ArgumentError("termination must be :ncl or :madnlp, got $(ncl_options.termination)"))
-    # With termination on MadNLP's criterion the inner problem is scaled as MadNLP would scale
-    # the original one, so that the inner barrier floor (mu_min) maps to a complementarity
-    # below tol in MadNLP's units; otherwise the user's scaling_max_gradient applies.
-    max_gradient = if ncl_options.termination == :madnlp
-        T(get(ipm_options, :nlp_scaling_max_gradient, 100))   # MadNLP's default nlp_scaling_max_gradient
-    else
-        ncl_options.scaling_max_gradient
+    # The loop also uses opt_tol and feas_tol as control thresholds: whether an outer iteration
+    # updates the multipliers or raises the penalty, and the infeasibility exit. Under
+    # termination = :madnlp they are capped at tol, so the loop keeps driving the residuals
+    # down to what the stopping test asks for.
+    if ncl_options.termination == :madnlp
+        ncl_options = NCLOptions{T}(;
+            (f => getfield(ncl_options, f) for f in fieldnames(NCLOptions{T}))...,
+            opt_tol = min(ncl_options.opt_tol, ncl_options.tol),
+            feas_tol = min(ncl_options.feas_tol, ncl_options.tol),
+            constr_viol_tol = min(ncl_options.constr_viol_tol, ncl_options.tol),
+        )
     end
     ncl = if ncl_options.scaling
-        NCLModel(ScaledModel(nlp; max_gradient=max_gradient))
+        NCLModel(ScaledModel(nlp; max_gradient=ncl_options.scaling_max_gradient))
     else
         NCLModel(nlp)
     end
@@ -65,10 +69,22 @@ function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOption
     # Remove regularization variables to work in the original space
     n = MadNLP.n_variables(solver.cb) - m
     @assert solver.m == m
-    term = ncl_options.termination == :madnlp ? MadNLPTermination(nlp; tol = ncl_options.tol, s_max = T(solver.opt.s_max),
-                                                                   max_gradient = T(solver.opt.nlp_scaling_max_gradient),
-                                                                   bound_relax = T(solver.opt.bound_relax_factor),
-                                                                   bound_push = T(solver.opt.bound_push), bound_fac = T(solver.opt.bound_fac)) : nothing
+    term = nothing
+    if ncl_options.termination == :madnlp
+        term = MadNLPTermination(nlp; tol = ncl_options.tol, s_max = T(solver.opt.s_max),
+                                 max_gradient = T(solver.opt.nlp_scaling_max_gradient),
+                                 bound_relax = T(solver.opt.bound_relax_factor),
+                                 bound_push = T(solver.opt.bound_push), bound_fac = T(solver.opt.bound_fac))
+        # The inner barrier parameter sets the complementarity of the iterate; in MadNLP's
+        # units it is mu * (MadNLP's objective scale) / (this solver's objective scale), so the
+        # barrier floor is lowered until that product is below tol.
+        obj_scale_ncl = ncl.nlp isa ScaledModel ? ncl.nlp.scaling_obj : one(T)
+        mu_floor = T(0.1) * ncl_options.tol * obj_scale_ncl / term.obj_scale
+        ncl_options = NCLOptions{T}(;
+            (f => getfield(ncl_options, f) for f in fieldnames(NCLOptions{T}))...,
+            mu_min = min(ncl_options.mu_min, mu_floor),
+        )
+    end
     return NCLSolver{T, VT, typeof(ncl.nlp), typeof(solver)}(ncl, solver, ncl_options, n, m, term)
 end
 
