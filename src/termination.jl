@@ -20,6 +20,12 @@ from the row multiplier (`y = zu_s - zl_s`), and every bound relaxed by
 units it works in); the scaling factors are taken at the initial point pushed inside the
 relaxed bounds (`bound_push`, `bound_fac`), where MadNLP takes them. Fixed variables are left out, as MadNLP removes them. Every operation is
 a broadcast or a reduction, so the test runs on the GPU.
+
+With this termination the solver keeps its own scaling and lowers its barrier floor so the
+complementarity of the iterate passes in MadNLP's units (see `NCLSolver`). NCL's
+extrapolation step can leave an iterate whose dual residual the inner solve no longer
+reduces once the penalty is at its maximum, and the loop then runs to its iteration limit;
+`extrapolation = false` avoids that (measured on pglib ACOPF cases).
 """
 struct MadNLPTermination{T, VT}
     tol::T
