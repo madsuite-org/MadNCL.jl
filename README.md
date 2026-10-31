@@ -25,10 +25,13 @@ For instance, you can solve any instance in [CUTEst.jl](https://github.com/Julia
 
 ```julia
 using MadNCL
+using MadNLP  # provides the default sparse linear solver (MUMPS)
 using CUTEst
 nlp = CUTEstModel("HS15")
 results = madncl(nlp)
 ```
+
+MadNCL depends on MadNLPCore, which has no default sparse linear solver. Load MadNLP, as above, or pass the option `linear_solver` and load the package implementing it.
 
 You gain more fine-grained control on the solver by tuning the options:
 
@@ -60,6 +63,7 @@ as a `MathOptNLPModel` using [NLPModelsJuMP.jl](https://github.com/JuliaSmoothOp
 using JuMP
 using NLPModelsJuMP
 using MadNCL
+using MadNLP
 
 jm = Model()
 x0 = [10, 10, 10, 10]
@@ -74,7 +78,7 @@ results = madncl(nlp)
 
 ## GPU support
 
-MadNCL supports natively the solution of nonlinear programs on the GPU using MadNLPGPU.
+MadNCL supports natively the solution of nonlinear programs on the GPU using cuMadNLP.
 To evaluate your model on the GPU, we recommend using [ExaModels](https://github.com/exanauts/ExaModels.jl).
 For instance, you can implement the instance `elec` from the [COPS benchmark](https://www.mcs.anl.gov/~more/cops/) directly as:
 
@@ -101,10 +105,10 @@ function elec_model(np; seed = 2713, T = Float64, backend = nothing, kwargs...)
 end
 ```
 
-You can instantiate the model and solve it on the GPU using CUDA and MadNLPGPU, respectively:
+You can instantiate the model and solve it on the GPU using CUDA and cuMadNLP, respectively:
 ```julia
 using CUDA
-using MadNLPGPU
+using cuMadNLP
 
 nlp = elec_model(100; backend=CUDABackend())
 
@@ -112,7 +116,7 @@ results = madncl(
     nlp;
     print_level=MadNLP.INFO,                # activate logs inside MadNLP
     kkt_system=MadNCL.K2rAuglagKKTSystem,   # we need to reformulate the Newton system inside MadNCL
-    linear_solver=MadNLPGPU.CUDSSSolver,    # factorize the KKT system on the GPU using NVIDIA cuDSS
+    linear_solver=CUDSSSolver,              # factorize the KKT system on the GPU using NVIDIA cuDSS
 )
 ```
 
