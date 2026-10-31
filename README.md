@@ -1,10 +1,10 @@
 # MadNCL.jl
 
-[![Run tests](https://github.com/MadNLP/MadNCL.jl/actions/workflows/action.yml/badge.svg)](https://github.com/MadNLP/MadNCL.jl/actions/workflows/action.yml)
+[![Run tests](https://github.com/madsuite-org/MadNCL.jl/actions/workflows/action.yml/badge.svg)](https://github.com/madsuite-org/MadNCL.jl/actions/workflows/action.yml)
 
 An implementation of [Algorithm NCL](https://link.springer.com/chapter/10.1007/978-3-319-90026-1_8) in Julia.
 
-MadNCL is built as [MadNLP](https://github.com/MadNLP/MadNLP.jl)'s extension, and supports the solution of
+MadNCL is built as [MadNLP](https://github.com/madsuite-org/MadNLP.jl)'s extension, and supports the solution of
 large-scale nonlinear programs on GPUs. MadNCL is particularly good at solving infeasible
 or degenerate optimization problems.
 
@@ -75,7 +75,7 @@ results = madncl(nlp)
 ## GPU support
 
 MadNCL supports natively the solution of nonlinear programs on the GPU using MadNLPGPU.
-To evaluate your model on the GPU, we recommend using [ExaModels](https://github.com/exanauts/ExaModels.jl).
+To evaluate your model on the GPU, we recommend using [ExaModels](https://github.com/madsuite-org/ExaModels.jl).
 For instance, you can implement the instance `elec` from the [COPS benchmark](https://www.mcs.anl.gov/~more/cops/) directly as:
 
 ```julia
