@@ -109,6 +109,7 @@ You can instantiate the model and solve it on the GPU using CUDA and cuMadNLP, r
 ```julia
 using CUDA
 using cuMadNLP
+using MadNCL, MadNLP
 
 nlp = elec_model(100; backend=CUDABackend())
 
