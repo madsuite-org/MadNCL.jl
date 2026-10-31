@@ -2,16 +2,16 @@ module MadNCLCUDAExt
 
 using LinearAlgebra
 using SparseArrays
-import MadNLPGPU
+import MadCoreGPU
 import CUDA: cuSPARSE, CUDACore
 import CUDA: CuVector, CUDABackend
 import KernelAbstractions: synchronize
-import MadNLP
+import MadNLPCore
 import MadNCL
 
-function MadNLP.transfer!(
+function MadNLPCore.transfer!(
     dest::cuSPARSE.CuSparseMatrixCSC{Tv},
-    src::MadNLP.SparseMatrixCOO{Tv},
+    src::MadNLPCore.SparseMatrixCOO{Tv},
     map::CuVector{Int},
 ) where {Tv}
     fill!(nonzeros(dest), zero(Tv))
@@ -37,12 +37,12 @@ function MadNCL.symul!(
     return y
 end
 
-function MadNLP.build_condensed_aug_coord!(
+function MadNLPCore.build_condensed_aug_coord!(
     kkt::MadNCL.K1sAuglagKKTSystem{T,VT,MT},
 ) where {T,VT,MT<:cuSPARSE.CuSparseMatrixCSC{T}}
     fill!(kkt.aug_com.nzVal, zero(T))
     if length(kkt.hptr) > 0
-        MadNLPGPU._transfer_hessian_kernel!(CUDABackend())(
+        MadCoreGPU._transfer_hessian_kernel!(CUDABackend())(
             kkt.aug_com.nzVal,
             kkt.hptr,
             kkt.hess_com.nzVal;
@@ -51,7 +51,7 @@ function MadNLP.build_condensed_aug_coord!(
         synchronize(CUDABackend())
     end
     if length(kkt.dptr) > 0
-        MadNLPGPU._transfer_hessian_kernel!(CUDABackend())(
+        MadCoreGPU._transfer_hessian_kernel!(CUDABackend())(
             kkt.aug_com.nzVal,
             kkt.dptr,
             kkt.pr_diag_reduced;
@@ -60,7 +60,7 @@ function MadNLP.build_condensed_aug_coord!(
         synchronize(CUDABackend())
     end
     if length(kkt.ext.jptrptr) > 1 # otherwise error is thrown
-        MadNLPGPU._transfer_jtsj_kernel!(CUDABackend())(
+        MadCoreGPU._transfer_jtsj_kernel!(CUDABackend())(
             kkt.aug_com.nzVal,
             kkt.jptr,
             kkt.ext.jptrptr,

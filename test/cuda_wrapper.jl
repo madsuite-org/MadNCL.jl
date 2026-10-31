@@ -1,7 +1,7 @@
 
 using CUDA
 using CUDSS
-using MadNLPGPU
+using cuMadNLP
 
 function test_model_gpu(ncl_cpu, ncl_gpu)
     n, m = NLPModels.get_nvar(ncl_gpu), NLPModels.get_ncon(ncl_gpu)
@@ -87,7 +87,7 @@ end
             nlp_gpu;
             print_level=MadNLP.ERROR,
             kkt_system=KKTSystem,
-            linear_solver=MadNLPGPU.CUDSSSolver,
+            linear_solver=CUDSSSolver,
             cudss_algorithm=MadNLP.LDL,
         )
         @test res.status == MadNLP.SOLVE_SUCCEEDED

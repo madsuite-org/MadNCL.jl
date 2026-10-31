@@ -7,7 +7,8 @@ version = "0.2.5"
 Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MadNLP = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
+MadCore = "a65213e2-99b2-4dc2-8349-7a266ca2b67f"
+MadNLPCore = "38486723-7c71-48b9-ad12-dc22a86097e8"
 NLPModels = "a4795742-8479-5a88-8948-cc11e1c8c1a6"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -15,10 +16,18 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [weakdeps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-MadNLPGPU = "d72a61cc-809d-412f-99be-fd81f4b8a598"
+MadCoreGPU = "bc174d20-fbd0-43bd-9ba9-5b5faf23ea88"
 
 [extensions]
-MadNCLCUDAExt = ["CUDA", "MadNLPGPU"]
+MadNCLCUDAExt = ["CUDA", "MadCoreGPU"]
+
+[sources]
+MadCore = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "MadCore"}
+MadNLPCore = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "MadNLPCore"}
+MadCoreGPU = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "MadCoreGPU"}
+MadNLP = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "MadNLP"}
+MadNLPTests = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "MadNLPTests"}
+cuMadNLP = {url = "https://github.com/madsuite-org/MadNLP.jl", rev = "madcore-split", subdir = "cuMadNLP"}
 
 [compat]
 Atomix = "1.1.2"
@@ -28,9 +37,12 @@ FiniteDiff = "2.27.0"
 JuMP = "1.30"
 KernelAbstractions = "0.9, 0.10"
 LinearAlgebra = "1.10"
-MadNLP = "0.11"
-MadNLPGPU = "0.11"
+MadNLP = "0.12"
+MadNLPCore = "0.1"
+MadCore = "0.1"
+MadCoreGPU = "0.1"
 MadNLPTests = "0.6.2"
+cuMadNLP = "0.1"
 NLPModels = "0.21.9"
 NLPModelsJuMP = "0.13"
 Printf = "1.10"
@@ -43,9 +55,12 @@ julia = "1.10"
 CUDSS = "45b445bb-4962-46a0-9369-b4df9d0f772e"
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
+MadCoreGPU = "bc174d20-fbd0-43bd-9ba9-5b5faf23ea88"
+MadNLP = "2621e9c9-9eb4-46b1-8089-e8c72242dfb6"
 MadNLPTests = "b52a2a03-04ab-4a5f-9698-6a2deff93217"
 NLPModelsJuMP = "792afdf1-32c1-5681-94e0-d7bf7a5df49e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+cuMadNLP = "0bc90ec8-66ae-4354-8e1d-92c57c2bd2b2"
 
 [targets]
-test = ["CUDA", "CUDSS", "FiniteDiff", "JuMP", "MadNLPGPU", "MadNLPTests", "NLPModelsJuMP", "Test"]
+test = ["CUDA", "CUDSS", "FiniteDiff", "JuMP", "MadCoreGPU", "MadNLP", "cuMadNLP", "MadNLPTests", "NLPModelsJuMP", "Test"]

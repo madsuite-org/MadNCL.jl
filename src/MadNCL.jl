@@ -7,8 +7,8 @@ import SparseArrays: sparsevec, nonzeros
 import SparseArrays: SparseMatrixCSC
 import Printf: @printf
 import NLPModels
-import MadNLP
-import MadNLP: AbstractExecutionStats, getStatus
+import MadNLPCore
+import MadNLPCore: AbstractExecutionStats, getStatus
 
 # CUDA related deps
 import Atomix
@@ -25,6 +25,6 @@ include("KKT/k2r.jl")
 
 include("solver.jl")
 
-MadNLP.madsuite(::Val{:madncl}, args...; kwargs...) = madncl(args...; kwargs...)
+MadNLPCore.madsuite(::Val{:madncl}, args...; kwargs...) = madncl(args...; kwargs...)
 
 end
