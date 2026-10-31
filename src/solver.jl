@@ -1,5 +1,5 @@
 
-import MadNLP: full, primal, dual, dual_lb, dual_ub
+import MadNLPCore: full, primal, dual, dual_lb, dual_ub
 
 #=
     NCLOptions
@@ -27,7 +27,7 @@ end
     NCLSolver
 =#
 
-struct NCLSolver{T, VT, M, S <: MadNLP.MadNLPSolver{T, VT}}
+struct NCLSolver{T, VT, M, S <: MadNLPCore.MadNLPSolver{T, VT}}
     ncl::NCLModel{T, VT, M}
     ipm::S
     options::NCLOptions{T}
@@ -41,14 +41,14 @@ function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOption
     else
         NCLModel(nlp)
     end
-    solver = MadNLP.MadNLPSolver(
+    solver = MadNLPCore.MadNLPSolver(
         ncl;
         nlp_scaling=false,
         ipm_options...,
     )
-    m = MadNLP.n_constraints(solver.cb)
+    m = MadNLPCore.n_constraints(solver.cb)
     # Remove regularization variables to work in the original space
-    n = MadNLP.n_variables(solver.cb) - m
+    n = MadNLPCore.n_variables(solver.cb) - m
     @assert solver.m == m
     return NCLSolver{T, VT, typeof(ncl.nlp), typeof(solver)}(ncl, solver, ncl_options, n, m)
 end
@@ -58,7 +58,7 @@ end
 =#
 
 mutable struct NCLStats{T, VT} <: AbstractExecutionStats
-    status::MadNLP.Status
+    status::MadNLPCore.Status
     solution::VT
     regularization::VT
     objective::T
@@ -68,7 +68,7 @@ mutable struct NCLStats{T, VT} <: AbstractExecutionStats
     multipliers_L::VT
     multipliers_U::VT
     iter::Int
-    counters::MadNLP.MadNLPCounters
+    counters::MadNLPCore.MadNLPCounters
 end
 
 function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModels.AbstractNLPModel}
@@ -81,16 +81,16 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
     x = similar(VT, n + m)
     zl = similar(VT, n + m)
     zu = similar(VT, n + m)
-    MadNLP.unpack_x!(x, ipm.cb, MadNLP.variable(solver.ipm.x))
-    MadNLP.unpack_z!(zl, ipm.cb, MadNLP.variable(solver.ipm.zl))
-    MadNLP.unpack_z!(zu, ipm.cb, MadNLP.variable(solver.ipm.zu))
+    MadNLPCore.unpack_x!(x, ipm.cb, MadNLPCore.variable(solver.ipm.x))
+    MadNLPCore.unpack_z!(zl, ipm.cb, MadNLPCore.variable(solver.ipm.zl))
+    MadNLPCore.unpack_z!(zu, ipm.cb, MadNLPCore.variable(solver.ipm.zu))
 
     y = copy(solver.ipm.y)
     r = x[n+1:n+m]
     # Evaluate the objective directly, as yk and ρk may have changed
     # since the last evaluation of ipm.obj_val.
     obj_val = NLPModels.obj(ncl.nlp, x[1:n])
-    MadNLP.update_z!(ipm.cb, x, y, zl, zu, ipm.jacl)
+    MadNLPCore.update_z!(ipm.cb, x, y, zl, zu, ipm.jacl)
     # Scale back problem data
     if isa(ncl.nlp, ScaledModel)
         obj_scale, con_scale = ncl.nlp.scaling_obj, ncl.nlp.scaling_cons
@@ -116,11 +116,11 @@ function NCLStats(solver::NCLSolver{T, VT, M}, status) where {T, VT, M<:NLPModel
 end
 
 function getStatus(result::NCLStats)
-    if result.status == MadNLP.SOLVE_SUCCEEDED
+    if result.status == MadNLPCore.SOLVE_SUCCEEDED
         println("Optimal solution found.")
-    elseif result.status == MadNLP.INFEASIBLE_PROBLEM_DETECTED
+    elseif result.status == MadNLPCore.INFEASIBLE_PROBLEM_DETECTED
         println("Convergence to an infeasible point.")
-    elseif result.status == MadNLP.MAXIMUM_ITERATIONS_EXCEEDED
+    elseif result.status == MadNLPCore.MAXIMUM_ITERATIONS_EXCEEDED
         println("Maximum number of iterations reached.")
     else
         println("Unknown return status.")
@@ -171,37 +171,37 @@ function get_constr_viol_tol(ncl::NCLModel{T, VT, M}, r::AbstractVector) where {
 end
 
 # Function barrier: `solver.opt.barrier` is not concretely typed.
-function _fix_barrier_parameter!(barrier::MadNLP.AbstractBarrierUpdate{T}, μ::T) where T
+function _fix_barrier_parameter!(barrier::MadNLPCore.AbstractBarrierUpdate{T}, μ::T) where T
     barrier.mu_init = μ
     # Ensure the barrier parameter is fixed
     barrier.mu_min = μ
     return
 end
 
-function setup!(solver::MadNLP.MadNLPSolver{T}; μ=T(1e-1), tol=T(1e-8)) where T
+function setup!(solver::MadNLPCore.MadNLPSolver{T}; μ=T(1e-1), tol=T(1e-8)) where T
     # Update options
     _fix_barrier_parameter!(solver.opt.barrier, μ)
     solver.opt.tol = tol
     solver.mu = μ
 
     # Refresh values
-    solver.obj_val = MadNLP.eval_f_wrapper(solver, solver.x)
-    MadNLP.eval_grad_f_wrapper!(solver, solver.f, solver.x)
-    MadNLP.eval_cons_wrapper!(solver, solver.c, solver.x)
+    solver.obj_val = MadNLPCore.eval_f_wrapper(solver, solver.x)
+    MadNLPCore.eval_grad_f_wrapper!(solver, solver.f, solver.x)
+    MadNLPCore.eval_cons_wrapper!(solver, solver.c, solver.x)
 
     # Update filter
-    theta = MadNLP.get_theta(solver.c)
+    theta = MadNLPCore.get_theta(solver.c)
     solver.theta_max = T(1e4) * max(1,theta)
     solver.theta_min = T(1e-4) * max(1,theta)
     solver.tau = max(solver.opt.tau_min, one(T) - μ)
     empty!(solver.filter)
     push!(solver.filter, (solver.theta_max, T(-Inf)))
 
-    return MadNLP.REGULAR
+    return MadNLPCore.REGULAR
 end
 
 # RHS for extrapolation step
-function set_aug_rhs_extrapolation!(solver::NCLSolver, kkt::MadNLP.AbstractKKTSystem, μ)
+function set_aug_rhs_extrapolation!(solver::NCLSolver, kkt::MadNLPCore.AbstractKKTSystem, μ)
     ipm = solver.ipm
     ρ = solver.ncl.ρk[]
 
@@ -257,12 +257,12 @@ function extrapolation!(solver::NCLSolver{T}) where T
     μ_fac, μ_tau, μ_min = solver.options.mu_fac, solver.options.mu_tau, solver.options.mu_min
 
     # Evaluate model with new rho and mu.
-    ipm.obj_val = MadNLP.eval_f_wrapper(ipm, ipm.x)
-    MadNLP.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
-    MadNLP.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
-    MadNLP.eval_jac_wrapper!(ipm, ipm.kkt, ipm.x)
-    MadNLP.jtprod!(ipm.jacl, ipm.kkt, ipm.y)
-    MadNLP.eval_lag_hess_wrapper!(ipm, ipm.kkt, ipm.x, ipm.y)
+    ipm.obj_val = MadNLPCore.eval_f_wrapper(ipm, ipm.x)
+    MadNLPCore.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
+    MadNLPCore.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
+    MadNLPCore.eval_jac_wrapper!(ipm, ipm.kkt, ipm.x)
+    MadNLPCore.jtprod!(ipm.jacl, ipm.kkt, ipm.y)
+    MadNLPCore.eval_lag_hess_wrapper!(ipm, ipm.kkt, ipm.x, ipm.y)
 
     # Previous KKT residual is the norm of the RHS
     set_aug_rhs_extrapolation!(solver, ipm.kkt, μk)
@@ -273,9 +273,9 @@ function extrapolation!(solver::NCLSolver{T}) where T
     τ = max(T(0.995), one(T) - μp)
 
     # Solve KKT system
-    MadNLP.set_aug_diagonal!(ipm.kkt, ipm)
+    MadNLPCore.set_aug_diagonal!(ipm.kkt, ipm)
     set_aug_rhs_extrapolation!(solver, ipm.kkt, μp)
-    is_solved = MadNLP.inertia_correction!(ipm.inertia_corrector, ipm)
+    is_solved = MadNLPCore.inertia_correction!(ipm.inertia_corrector, ipm)
 
     # If the linear solver has failed, we leave the extrapolation step
     if !is_solved
@@ -283,14 +283,14 @@ function extrapolation!(solver::NCLSolver{T}) where T
     end
 
     # Fraction to boundary
-    alpha_p = MadNLP.get_alpha_max(
+    alpha_p = MadNLPCore.get_alpha_max(
         primal(ipm.x),
         primal(ipm.xl),
         primal(ipm.xu),
         primal(ipm.d),
         τ,
     )
-    alpha_d = MadNLP.get_alpha_z(
+    alpha_d = MadNLPCore.get_alpha_z(
         ipm.zl_r,
         ipm.zu_r,
         dual_lb(ipm.d),
@@ -308,11 +308,11 @@ function extrapolation!(solver::NCLSolver{T}) where T
     ipm.mu = μk + alpha_p * (μp - μk)
 
     # Update callbacks
-    ipm.obj_val = MadNLP.eval_f_wrapper(ipm, ipm.x)
-    MadNLP.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
-    MadNLP.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
-    MadNLP.eval_jac_wrapper!(ipm, ipm.kkt, ipm.x)
-    MadNLP.jtprod!(ipm.jacl, ipm.kkt, ipm.y)
+    ipm.obj_val = MadNLPCore.eval_f_wrapper(ipm, ipm.x)
+    MadNLPCore.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
+    MadNLPCore.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
+    MadNLPCore.eval_jac_wrapper!(ipm, ipm.kkt, ipm.x)
+    MadNLPCore.jtprod!(ipm.jacl, ipm.kkt, ipm.y)
 
     # Compute KKT residual to check if crossover has succeeded
     set_aug_rhs_extrapolation!(solver, ipm.kkt, ipm.mu)
@@ -329,9 +329,9 @@ function extrapolation!(solver::NCLSolver{T}) where T
         ipm.zl_r .-= alpha_d .* dual_lb(ipm.d)
         ipm.zu_r .-= alpha_d .* dual_ub(ipm.d)
         # Refresh values in callback
-        ipm.obj_val = MadNLP.eval_f_wrapper(ipm, ipm.x)
-        MadNLP.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
-        MadNLP.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
+        ipm.obj_val = MadNLPCore.eval_f_wrapper(ipm, ipm.x)
+        MadNLPCore.eval_grad_f_wrapper!(ipm, ipm.f, ipm.x)
+        MadNLPCore.eval_cons_wrapper!(ipm, ipm.c, ipm.x)
         return (false, res_p)
     end
 end
@@ -362,19 +362,19 @@ function solve!(solver::NCLSolver{T}) where T
 
     start_time = time()
 
-    ncl_status = MadNLP.INITIAL
+    ncl_status = MadNLPCore.INITIAL
 
     # Unless the parameter `dual_initialized` is set to `true`,
     # MadNLP computes the initial multipliers y0 in `initialize!`.
-    MadNLP.initialize!(ipm)
+    MadNLPCore.initialize!(ipm)
     # Update initial multiplier using multiplier computed by MadNLP in `initialize!`.
     ncl.yk .= ipm.y
 
-    ipm.status = MadNLP.REGULAR
+    ipm.status = MadNLPCore.REGULAR
     cnt_it_inner = 0
 
-    x = view(MadNLP.primal(ipm.x), 1:n)
-    r = view(MadNLP.primal(ipm.x), 1+n:n+m)
+    x = view(MadNLPCore.primal(ipm.x), 1:n)
+    r = view(MadNLPCore.primal(ipm.x), 1+n:n+m)
 
     pr_feas = ipm.inf_pr
     du_feas = get_inf_du(solver)
@@ -398,21 +398,21 @@ function solve!(solver::NCLSolver{T}) where T
             flag = is_extrapolated ? "+" : " "
         end
         if !is_extrapolated
-            status = MadNLP.regular!(ipm)
-            if status == MadNLP.MAXIMUM_ITERATIONS_EXCEEDED
-                ncl_status = MadNLP.MAXIMUM_ITERATIONS_EXCEEDED
+            status = MadNLPCore.regular!(ipm)
+            if status == MadNLPCore.MAXIMUM_ITERATIONS_EXCEEDED
+                ncl_status = MadNLPCore.MAXIMUM_ITERATIONS_EXCEEDED
                 break
             end
-            has_converged = status == MadNLP.SOLVE_SUCCEEDED
+            has_converged = status == MadNLPCore.SOLVE_SUCCEEDED
             flag = has_converged ? " " : "r"
         end
 
         # Get KKT residuals for scaled problem
         pr_feas = norm(r, Inf)
-        du_feas = MadNLP.get_inf_du(
-            MadNLP.full(ipm.f), MadNLP.full(ipm.zl), MadNLP.full(ipm.zu), ipm.jacl, one(T),
+        du_feas = MadNLPCore.get_inf_du(
+            MadNLPCore.full(ipm.f), MadNLPCore.full(ipm.zl), MadNLPCore.full(ipm.zu), ipm.jacl, one(T),
         )
-        cc_feas = MadNLP.get_inf_compl(
+        cc_feas = MadNLPCore.get_inf_compl(
             ipm.x_lr, ipm.xl_r, ipm.zl_r, ipm.xu_r, ipm.x_ur, ipm.zu_r, ipm.mu, one(T),
         )
 
@@ -446,19 +446,19 @@ function solve!(solver::NCLSolver{T}) where T
             pr_feas <= options.feas_tol &&
             get_constr_viol_tol(solver.ncl, r) <= options.constr_viol_tol
         )
-            ncl_status = MadNLP.SOLVE_SUCCEEDED
+            ncl_status = MadNLPCore.SOLVE_SUCCEEDED
             break
         # Check infeasibility
         elseif (ncl.ρk[] >= options.rho_max) && (pr_feas > options.opt_tol)
-            ncl_status = MadNLP.INFEASIBLE_PROBLEM_DETECTED
+            ncl_status = MadNLPCore.INFEASIBLE_PROBLEM_DETECTED
             break
         end
         iter += 1
     end
 
     # Loop exhausted without convergence
-    if ncl_status == MadNLP.INITIAL
-        ncl_status = MadNLP.MAXIMUM_ITERATIONS_EXCEEDED
+    if ncl_status == MadNLPCore.INITIAL
+        ncl_status = MadNLPCore.MAXIMUM_ITERATIONS_EXCEEDED
     end
 
     ipm.cnt.total_time = time() - start_time
