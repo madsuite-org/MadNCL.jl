@@ -203,6 +203,34 @@ end
     @test stats.multipliers_U ≈ ref_results.multipliers_U rtol=1e-6
 end
 
+# The infeasibility test must compare the primal residual against `feas_tol`, not `opt_tol`.
+@testset "Infeasibility test uses feas_tol" begin
+    # Feasible problem, opt_tol < feas_tol. Starting at ρ = rho_max makes the
+    # infeasibility check fire once the residual exceeds opt_tol but not feas_tol.
+    model = Model()
+    @variable(model, x[1:2] >= 0)
+    @constraint(model, x[1]^2 + x[2]^2 == 1.0)
+    @objective(model, Min, (x[1] - 2)^2 + (x[2] - 1)^2)
+    nlp = NLPModelsJuMP.MathOptNLPModel(model)
+    opts = MadNCL.NCLOptions{Float64}(;
+        verbose=false, opt_tol=1e-8, feas_tol=1e-1, rho_init=1e2, rho_max=1e2,
+    )
+    res = MadNCL.madncl(nlp; ncl_options=opts, print_level=MadNLP.ERROR)
+    @test res.status == MadNLP.SOLVE_SUCCEEDED
+    @test res.solution ≈ [2, 1] ./ sqrt(5) rtol=1e-3
+
+    # Infeasible problem whose residual (5e-4) lies between feas_tol and opt_tol.
+    model = Model()
+    @variable(model, y)
+    @constraint(model, y == 0.0)
+    @constraint(model, y == 1e-3)
+    @objective(model, Min, y^2)
+    nlp = NLPModelsJuMP.MathOptNLPModel(model)
+    opts = MadNCL.NCLOptions{Float64}(; verbose=false, opt_tol=1e-2, feas_tol=1e-6)
+    res = MadNCL.madncl(nlp; ncl_options=opts, print_level=MadNLP.ERROR)
+    @test res.status == MadNLP.INFEASIBLE_PROBLEM_DETECTED
+end
+
 # Test taken from MadNLPTests
 @testset "Max sense optimization problem" begin
     model = Model()
