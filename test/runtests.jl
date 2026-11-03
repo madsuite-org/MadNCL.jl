@@ -138,6 +138,7 @@ end
     @testset "[KKT] $(KKT)" for KKT in [
         MadNCL.K2rAuglagKKTSystem,
         MadNCL.K1sAuglagKKTSystem,
+        MadNCL.ScaledK2rKKTSystem,
     ]
         # Test KKT formulation
         linear_solver = MadNLP.LapackCPUSolver
