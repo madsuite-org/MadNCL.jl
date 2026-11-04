@@ -449,7 +449,7 @@ function solve!(solver::NCLSolver{T}) where T
             ncl_status = MadNLP.SOLVE_SUCCEEDED
             break
         # Check infeasibility
-        elseif (ncl.ρk[] >= options.rho_max) && (pr_feas > options.opt_tol)
+        elseif (ncl.ρk[] >= options.rho_max) && (pr_feas > options.feas_tol)
             ncl_status = MadNLP.INFEASIBLE_PROBLEM_DETECTED
             break
         end
