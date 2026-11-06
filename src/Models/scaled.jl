@@ -65,8 +65,8 @@ function ScaledModel(
     Jj = similar(x0, Int, nnzj)
     NLPModels.jac_structure!(nlp, Ji, Jj)
     NLPModels.jac_coord!(nlp, x0, scaling_jac)
-    MadNLP.set_con_scale_sparse!(scaling_cons, Ji, scaling_jac, max_gradient)
-    MadNLP.set_jac_scale_sparse!(scaling_jac, scaling_cons, Ji)
+    MadNLPCore.set_con_scale_sparse!(scaling_cons, Ji, scaling_jac, max_gradient)
+    MadNLPCore.set_jac_scale_sparse!(scaling_jac, scaling_cons, Ji)
 
     meta = NLPModels.NLPModelMeta(
         n;

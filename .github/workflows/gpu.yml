@@ -19,7 +19,9 @@ jobs:
       labels: cuda
     strategy:
       matrix:
-        julia-version: ['lts', '1']
+        # Julia 1.10 does not read [sources], which points to the unregistered MadNLP.jl
+        # packages; restore it once those packages are registered.
+        julia-version: ['1']
         julia-arch: [x64]
         hsl-version: ['2025.7.11']
 

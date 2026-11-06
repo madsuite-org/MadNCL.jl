@@ -16,7 +16,9 @@ jobs:
       fail-fast: false
       matrix:
           os: [ubuntu-22.04]
-          julia-version: ['1.10', '1.11', '1.12']
+          # Julia 1.10 does not read [sources], which points to the unregistered MadNLP.jl
+          # packages; restore it once those packages are registered.
+          julia-version: ['1.11', '1.12']
           julia-arch: [x64]
     steps:
       - uses: actions/checkout@v4
