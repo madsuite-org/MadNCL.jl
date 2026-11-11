@@ -51,6 +51,10 @@ results = madncl(
 )
 ```
 
+By default, MadNCL solves the Newton system with `MadNCL.K2rAuglagKKTSystem`,
+which eliminates the regularization variables `r` from the KKT system.
+Pass `kkt_system=MadNCL.K1sAuglagKKTSystem` or any MadNLP KKT system to override it.
+
 ## JuMP
 
 MadNCL does not yet provide an extension for [MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl), but a JuMP model can be wrapped
@@ -111,7 +115,6 @@ nlp = elec_model(100; backend=CUDABackend())
 results = madncl(
     nlp;
     print_level=MadNLP.INFO,                # activate logs inside MadNLP
-    kkt_system=MadNCL.K2rAuglagKKTSystem,   # we need to reformulate the Newton system inside MadNCL
     linear_solver=MadNLPGPU.CUDSSSolver,    # factorize the KKT system on the GPU using NVIDIA cuDSS
 )
 ```

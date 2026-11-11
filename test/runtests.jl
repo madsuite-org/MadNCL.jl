@@ -165,6 +165,14 @@ end
     end
 end
 
+@testset "Default KKT system is K2r" begin
+    solver = MadNCL.NCLSolver(HS15Model(); print_level=MadNLP.ERROR)
+    @test solver.ipm.kkt isa MadNCL.K2rAuglagKKTSystem
+    # A user-supplied KKT system still takes precedence.
+    solver = MadNCL.NCLSolver(HS15Model(); print_level=MadNLP.ERROR, kkt_system=MadNLP.SparseKKTSystem)
+    @test solver.ipm.kkt isa MadNLP.SparseKKTSystem
+end
+
 @testset "Precision $(T) ($(kkt))" for T in (Float32, Float64), kkt in [
     MadNCL.K2rAuglagKKTSystem,
     MadNCL.K1sAuglagKKTSystem,

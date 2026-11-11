@@ -44,6 +44,7 @@ function NCLSolver(nlp::NLPModels.AbstractNLPModel{T, VT}; ncl_options=NCLOption
     solver = MadNLP.MadNLPSolver(
         ncl;
         nlp_scaling=false,
+        kkt_system=K2rAuglagKKTSystem,
         ipm_options...,
     )
     m = MadNLP.n_constraints(solver.cb)
